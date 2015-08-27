@@ -1,0 +1,301 @@
+<?php
+
+function sp_debat_permission() {
+  return array('subscribe debates' => array('title' => 'Inschrijven debatten', 'restrict access' => TRUE));
+}
+
+function sp_debat_menu() {
+  $items = array();
+  $items['form/aanmelden-debat'] = array(
+    'title' => 'Inschrijven debat',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sp_debat_subscription_form'),
+    'access arguments' => array('subscribe debates'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'sp_debat_subscription_form.inc',
+  );
+  $items['form/aanmelden-debat/autocomplete_members/%'] = array(
+    'page callback' => 'sp_debat_autocomplete_members',
+    'page arguments' => array(3),
+    'access arguments' => array('subscribe debates'),
+    'type' => MENU_CALLBACK,
+    'file' => 'sp_debat_subscription_form.inc',
+  );
+  return $items;
+}
+
+/**
+ * Retrieves a CiviCRM contact by Drupal user ID.
+ */
+function sp_debat_get_civi_contact($uid) {
+  $contacts = &drupal_static(__FUNCTION__);
+  if (isset($contacts[$uid])) {
+    return $contacts[$uid];
+  }
+  if (!isset($contacts)) {
+    $contacts = array();
+  }
+  $contacts[$uid] = FALSE;
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $res = civicrm_api('uf_match', 'get', array('uf_id' => $uid, 'version' => 3));
+  if ($res['is_error'] || empty($res['id']) || empty($res['values'][$res['id']])) {
+    return FALSE;
+  }
+  $id = $res['values'][$res['id']]['contact_id'];
+  $res = civicrm_api('contact', 'get', array('contact_id' => $id, 'version' => 3));
+  if ($res['is_error']) {
+    return FALSE;
+  }
+  $contacts[$uid] = $res['values'][$res['id']];
+  return $contacts[$uid];
+}
+
+function sp_debat_get_contact($contact_id) {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'id' => $contact_id,
+  );
+  $result = civicrm_api('Contact', 'get', $params);
+  if (empty($result['values'])) return FALSE;
+  return $result['values'][0];
+}
+
+function sp_debat_get_voorzitter_afdelingen($contact_id) {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $afdelingen_data = array();
+  $relations = array(
+    '97' => 'Voorzitter',
+    '98' => 'Vervangend voorzitter',
+  );
+  foreach ($relations as $relationship_type_id => $relation_name) {
+    // Get afdeling id.
+    $params = array(
+      'version' => 3,
+      'sequential' => 1,
+      'relationship_type_id' => $relationship_type_id,
+      'contact_id_a' => $contact_id,
+      'is_active' => 1,
+    );
+    $result = civicrm_api('Relationship', 'get', $params);
+    if (isset($result['values'])) {
+      foreach ($result['values'] as $value) {
+        $afdeling_id = $value['contact_id_b'];
+        // Get afdeling data.
+        $params = array(
+          'version' => 3,
+          'sequential' => 1,
+          'id' => $afdeling_id,
+        );
+        $afdelingresult = civicrm_api('Contact', 'get', $params);
+        if (isset($afdelingresult['values'])) {
+          $afdelingen_data[] = $afdelingresult['values'][0];
+        }
+      }
+    }
+  }
+  if (!empty($afdelingen_data)) {
+    return $afdelingen_data;
+  }
+  return FALSE;
+}
+
+function sp_debat_get_province($afdeling_id) {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  // Get regio id.
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'relationship_type_id' => 93,
+    'contact_id_a' => $afdeling_id,
+    'is_active' => 1,
+  );
+  $result = civicrm_api('Relationship', 'getsingle', $params);
+  if (!isset($result['contact_id_b'])) return FALSE;
+  // Get province id.
+  $regio_id = $result['contact_id_b'];
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'relationship_type_id' => 95,
+    'contact_id_a' => $regio_id,
+    'is_active' => 1,
+  );
+  $result = civicrm_api('Relationship', 'getsingle', $params);
+  if (!isset($result['contact_id_b'])) return FALSE;
+  // Get province data.
+  $province_id = $result['contact_id_b'];
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'contact_id' => $province_id,
+  );
+  $result = civicrm_api('Contact', 'getsingle', $params);
+  if (!isset($result['contact_id'])) return FALSE;
+  return $result;
+}
+
+function sp_debat_get_event($province_id) {
+  // Mapping: province id => event id.
+  $mapping = array(
+    '806810' => 1362,// SP-provincie Overijssel -> Noord
+    '806829' => 1362,// SP-provincie Groningen -> Noord
+    '806866' => 1362,// SP-provincie Friesland -> Noord
+    '806801' => 1362,// SP-provincie Drenthe -> Noord
+    '806804' => 1363,// SP-provincie Zuid-Holland -> Midden
+    '806813' => 1363,// SP-provincie Flevoland -> Midden
+    '806818' => 1363,// SP-provincie Utrecht -> Midden
+    '806807' => 1363,// SP-provincie Noord-Holland -> Midden
+    '806826' => 1364,// SP-provincie Gelderland -> Zuid
+    '806895' => 1364,// SP-provincie Zeeland -> Zuid
+    '806838' => 1364,// SP-provincie Noord-Brabant -> Zuid
+    '806854' => 1364,// SP-provincie Limburg -> Zuid
+  );
+  $event_id = $mapping[$province_id];
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'id' => $event_id,
+  );
+  $result = civicrm_api('Event', 'getsingle', $params);
+  if (!isset($result['id'])) return FALSE;
+  return $result;
+}
+
+function sp_debat_get_allowed_participants($afdeling_id) {
+  $mapping = array(
+    1362 => 57, // verdeelsleutel Noord
+    1363 => 57, // verdeelsleutel Midden
+    1364 => 57, // verdeelsleutel Zuid
+  );
+  $province = sp_debat_get_province($afdeling_id);
+  $event = sp_debat_get_event($province['id']);
+  $members = sp_debat_get_afdeling_members($afdeling_id);
+  $allowed = round(count($members) / $mapping[$event['id']]);
+  if ($allowed <2) $allowed = 2;
+  return $allowed;
+}
+
+function sp_debat_get_afdeling_members($afdeling_id) {
+  $afdelingmembers = &drupal_static(__FUNCTION__);
+  if (!isset($afdelingmembers[$afdeling_id])) {
+    if ($cache = cache_get('sp_debat_data')) {
+      $data = $cache->data;
+      if (isset($data['afdelingmembers'][$afdeling_id])) {
+        $afdelingmembers[$afdeling_id] = $data['afdelingmembers'][$afdeling_id];
+      }
+      else {
+        $afdelingmembers[$afdeling_id] = sp_debat_get_afdeling_members_helper($afdeling_id);
+        $data['afdelingmembers'][$afdeling_id] = $afdelingmembers[$afdeling_id];
+        cache_set('sp_debat_data', $data, 'cache', time() + 3600);
+      }
+    }
+    else {
+      $afdelingmembers[$afdeling_id] = sp_debat_get_afdeling_members_helper($afdeling_id);
+      $data['afdelingmembers'][$afdeling_id] = $afdelingmembers[$afdeling_id];
+      cache_set('sp_debat_data', $data, 'cache', time() + 3600);
+    }
+  }
+  return $afdelingmembers[$afdeling_id];
+}
+
+function sp_debat_get_afdeling_members_helper($afdeling_id) {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $afdelingmembers = array();
+  $result = db_query("SELECT c.id, c.display_name FROM {civicrm_contact} c INNER JOIN {civicrm_value_geostelsel} g ON c.id = g.entity_id INNER JOIN {civicrm_membership} m ON c.id = m.contact_id WHERE (m.membership_type_id = 1 OR m.membership_type_id = 2) AND g.afdeling = :afdeling AND c.contact_type = 'Individual' AND m.status_id = 2", array(':afdeling' => $afdeling_id));
+  if ($result) {
+    while ($row = $result->fetchAssoc()) {
+      $members[$row['id']] = $row['display_name'];
+    }
+  }
+  return $members;
+}
+
+function sp_debat_contact_member_afdeling($contact_id, $afdeling_id) {
+  $members = sp_debat_get_afdeling_members($afdeling_id);
+  if (isset($members[$contact_id])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function sp_debat_get_participants($event_id) {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'event_id' => $event_id,
+  );
+  $result = civicrm_api('Participant', 'get', $params);
+  if (empty($result['values'])) return array();
+  return $result['values'];
+}
+
+function sp_debat_get_participant($participant_id) {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'id' => $participant_id,
+  );
+  $result = civicrm_api('Participant', 'get', $params);
+  if (empty($result['values'])) return array();
+  return $result['values'][0];
+}
+
+function sp_debat_add_participant($contact_id, $event_id) {
+  $participants = sp_debat_get_participants($event_id);
+  $contact = sp_debat_get_contact($contact_id);
+  foreach ($participants as $participant) {
+    if ($participant['contact_id'] == $contact_id) {
+      drupal_set_message($participant['display_name'] . ' was reeds aangemeld.', 'warning');
+      return;
+    }
+  }
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'event_id' => $event_id,
+    'contact_id' => $contact_id,
+  );
+  $result = civicrm_api('Participant', 'create', $params);
+  if (empty($result['values'])) {
+    drupal_set_message('Het was niet mogelijk om ' . $contact['display_name'] . ' aan te melden.', 'error');
+    return FALSE;
+  }
+  else {
+    // Get contact
+    drupal_set_message($contact['display_name'] . ' is aangemeld.');
+    return;
+  }
+}
+
+function sp_debat_remove_participant($participant_id, $event_id) {
+  $participant = sp_debat_get_participant($participant_id);
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'id' => $participant_id,
+  );
+  $result = civicrm_api('Participant', 'delete', $params);
+  if (empty($result['values'])) {
+    drupal_set_message('Het was niet mogelijk om ' . $participant['display_name'] . ' af te melden.', 'error');
+    return FALSE;
+  }
+  drupal_set_message($participant['display_name'] . ' is afgemeld.');
+  return;
+}

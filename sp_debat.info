@@ -1,0 +1,7 @@
+name = SP-Debat
+description = Inschrijvingspagina voor SP debatten
+version = 1.0
+core = 7.x
+package = sprbs
+
+//stylesheets[all][] = sp_debat.css
