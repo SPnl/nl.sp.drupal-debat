@@ -11,15 +11,31 @@ function sp_debat_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('sp_debat_subscription_form'),
     'access arguments' => array('subscribe debates'),
-    'file' => 'sp_debat_subscription_form.inc',
+    'file' => 'sp_debat.subscription_form.inc',
   );
   $items['form/aanmelden-debat/autocomplete_members/%'] = array(
     'page callback' => 'sp_debat_autocomplete_members',
     'page arguments' => array(3),
     'access arguments' => array('subscribe debates'),
     'type' => MENU_CALLBACK,
-    'file' => 'sp_debat_subscription_form.inc',
+    'file' => 'sp_debat.subscription_form.inc',
   );
+  $items['admin/config/sp/debat'] = [
+    'title' => 'Debat aanmeldformulier',
+    'description' => 'Debat aanmeldformulier instellen.',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sp_debat_admin_form'), 
+    'access arguments' => array('access administration pages'),
+    'file' => 'sp_debat.admin.inc',
+    ];
+
+  $items['admin/config/sp/aanmelden/submissions'] = [
+    'title'            => 'Inschrijvingen',
+    'type'             => MENU_DEFAULT_LOCAL_TASK,
+    'access arguments' => array('access administration pages'),
+    ];
+
   return $items;
 }
 
@@ -170,8 +186,8 @@ function sp_debat_get_event($province_id) {
 
 function sp_debat_get_allowed_participants($afdeling_id) {
   $mapping = array(
-    1362 => 57, // verdeelsleutel Noord
-    1363 => 57, // verdeelsleutel Midden
+    1362 => 38, // verdeelsleutel Noord
+    1363 => 87, // verdeelsleutel Midden
     1364 => 57, // verdeelsleutel Zuid
   );
   $province = sp_debat_get_province($afdeling_id);

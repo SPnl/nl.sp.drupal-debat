@@ -60,17 +60,19 @@ function sp_debat_subscription_form($form, &$form_state) {
       // Create delete buttons for all participants.
       foreach ($participants as $participant) {
         // filter on afdeling.
-        $form[$afdeling['id']]['del_button_' . $participant['id']] = array(
-          '#type' => 'button',
-          '#value' => 'x',
-          '#name' => 'del_button_' . $participant['id'],
-          '#prefix' => '<p>',
-          '#suffix' =>  $participant['display_name'] . '</p> ',
-          '#ajax' => array(
-            'callback' => 'sp_debat_participants_form_callback',
-            'wrapper' => 'debat_form',
-          ),
-        );
+        if (isset($members[$participant['contact_id']])) {
+          $form[$afdeling['id']]['del_button_' . $participant['id']] = array(
+            '#type' => 'button',
+            '#value' => 'x',
+            '#name' => 'del_button_' . $participant['id'],
+            '#prefix' => '<p>',
+            '#suffix' =>  $participant['display_name'] . '</p> ',
+            '#ajax' => array(
+              'callback' => 'sp_debat_participants_form_callback',
+              'wrapper' => 'debat_form',
+            ),
+          );
+        }
       }
     }
   }
