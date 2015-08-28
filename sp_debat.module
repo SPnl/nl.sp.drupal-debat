@@ -157,21 +157,25 @@ function sp_debat_get_province($afdeling_id) {
 
 function sp_debat_get_event($province_id) {
   // Mapping: province id => event id.
-  $mapping = array(
-    '806810' => 1362,// SP-provincie Overijssel -> Noord
-    '806829' => 1362,// SP-provincie Groningen -> Noord
-    '806866' => 1362,// SP-provincie Friesland -> Noord
-    '806801' => 1362,// SP-provincie Drenthe -> Noord
-    '806804' => 1363,// SP-provincie Zuid-Holland -> Midden
-    '806813' => 1363,// SP-provincie Flevoland -> Midden
-    '806818' => 1363,// SP-provincie Utrecht -> Midden
-    '806807' => 1363,// SP-provincie Noord-Holland -> Midden
-    '806826' => 1364,// SP-provincie Gelderland -> Zuid
-    '806895' => 1364,// SP-provincie Zeeland -> Zuid
-    '806838' => 1364,// SP-provincie Noord-Brabant -> Zuid
-    '806854' => 1364,// SP-provincie Limburg -> Zuid
+  $event_noord = variable_get('sp_debat_event_noord');
+  $event_midden = variable_get('sp_debat_event_midden');
+  $event_zuid = variable_get('sp_debat_event_zuid');
+  // Mapping province contact id's to landsdeel.
+  $landsdeel_province_mapping = array(
+    'noord' => array(806810, 806829, 806866, 806801),
+    'midden' => array(806804, 806813, 806818, 806807),
+    'zuid' => array(806826, 806895, 806838, 806854),
   );
-  $event_id = $mapping[$province_id];
+  // Create province event mapping.
+  foreach ($landsdeel_province_mapping as $landsdeel => $provinces) {
+    foreach ($provinces as $province) {
+      $varname = 'event_' . $landsdeel;
+      $province_event_mapping[$province] = $$varname;
+    }
+  }
+  $event_id = $province_event_mapping[$province_id];
+
+  // Get event data.
   civicrm_initialize();
   require_once 'api/api.php';
   $params = array(
@@ -185,10 +189,17 @@ function sp_debat_get_event($province_id) {
 }
 
 function sp_debat_get_allowed_participants($afdeling_id) {
+  // Mapping: province id => event id.
+  $event_noord = variable_get('sp_debat_event_noord');
+  $event_midden = variable_get('sp_debat_event_midden');
+  $event_zuid = variable_get('sp_debat_event_zuid');
+  $ratio_noord = variable_get('sp_debat_ratio_noord');
+  $ratio_midden = variable_get('sp_debat_ratio_midden');
+  $ratio_zuid = variable_get('sp_debat_ratio_zuid');
   $mapping = array(
-    1362 => 38, // verdeelsleutel Noord
-    1363 => 87, // verdeelsleutel Midden
-    1364 => 57, // verdeelsleutel Zuid
+    $event_noord => $ratio_noord, // verdeelsleutel Noord
+    $event_midden => $ratio_midden, // verdeelsleutel Midden
+    $event_zuid => $ratio_zuid, // verdeelsleutel Zuid
   );
   $province = sp_debat_get_province($afdeling_id);
   $event = sp_debat_get_event($province['id']);
@@ -313,4 +324,17 @@ function sp_debat_remove_participant($participant_id, $event_id) {
   }
   drupal_set_message($participant['display_name'] . ' is afgemeld.');
   return;
+}
+
+function sp_debat_get_events() {
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $date = date("Y-m-d H:i:s");
+  $result = db_query("SELECT id, title FROM {civicrm_event} WHERE is_active = 1 AND start_date >= :date", array(':date' => $date));
+  if ($result) {
+    while ($row = $result->fetchAssoc()) {
+      $events[$row['id']] = $row['title'];
+    }
+  }
+  return $events;
 }

@@ -1,6 +1,11 @@
 <?php
 
 function sp_debat_subscription_form($form, &$form_state) {
+  global $conf;
+  if (!isset($conf['sp_debat_event_noord'])) {
+    drupal_set_message('Debat module is nog niet ingesteld.', 'error');
+    return;
+  }
   // Get data
   global $user;
   $voorzitter = sp_debat_get_civi_contact($user->uid);
