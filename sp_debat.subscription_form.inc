@@ -10,6 +10,14 @@ function sp_debat_subscription_form($form, &$form_state) {
   global $user;
   $voorzitter = sp_debat_get_civi_contact($user->uid);
   $afdelingen = sp_debat_get_voorzitter_afdelingen($voorzitter['id']);
+  $event_noord = variable_get('sp_debat_event_noord');
+  $event_midden = variable_get('sp_debat_event_midden');
+  $event_zuid = variable_get('sp_debat_event_zuid');
+
+  // Intro texts.
+  $intro[$event_noord] = '<p>Dinsdag 6 oktober<br/>Groninger Forum, Hereplein 73 te Groningen</p>';
+  $intro[$event_midden] = '<p>Maandag 28 september<br/>De Moed, Snoeckaertlaan 70 te Amersfoort</p>';
+  $intro[$event_zuid] = '<p>Dinsdag 22 september<br/>Verkadefabriek, Boschdijkstraat 45 te \'s Hertogenbosch</p>';
 
   // Create ajax form.
   $form = array(
@@ -36,7 +44,7 @@ function sp_debat_subscription_form($form, &$form_state) {
       );
       $form[$afdeling['id']]['intro_' . $afdeling['id']] = array(
         '#type' => 'markup',
-        '#markup' => '<h1>' . $afdeling['display_name'] . '</h1><h2>' . $event['title'] . '</h2>',
+        '#markup' => '<h1>' . $afdeling['display_name'] . '</h1><h2>' . $event['title'] . '</h2>' . $intro[$event['id']],
       );
       if ($allowed > 0) {
         // Create select participant button.

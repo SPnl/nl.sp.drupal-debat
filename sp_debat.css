@@ -28,6 +28,7 @@
 }
 
 .primary-content .content .sp-debat-form h1,
-.primary-content .content .sp-debat-form h2 { 
+.primary-content .content .sp-debat-form h2, 
+.primary-content .content .sp-debat-form p { 
   padding-left: 0px;
 }
