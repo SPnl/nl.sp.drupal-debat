@@ -12,9 +12,12 @@ function sp_debat_subscription_form($form, &$form_state) {
   $afdelingen = sp_debat_get_voorzitter_afdelingen($voorzitter['id']);
 
   // Create ajax form.
-  $form = array();
-  $form['#prefix'] = '<div id="debat_form">';
-  $form['#suffix'] = '</div>';
+  $form = array(
+    '#prefix' => '<div class="content" id="debat_form"><p>Meldt hier de leden aan die aanwezig zullen zijn bij het  voorzittersdebat voor jouw regio.</p>',
+    '#suffix' => '</div>',
+    '#attached' => array('css' => array(drupal_get_path('module', 'sp_debat') . '/sp_debat.css',),),
+    '#attributes' => array('class' => array('sp-debat-form'),),
+  );
   // Create a form for each afdeling.
   if ($afdelingen) {
     foreach($afdelingen as $afdeling) {
@@ -40,7 +43,7 @@ function sp_debat_subscription_form($form, &$form_state) {
         $form[$afdeling['id']]['participant_' . $afdeling['id']] = array(
           '#type' => 'textfield',
           '#title' => 'naam / lidnummer',
-          '#autocomplete_path' => 'form/aanmelden-debat/autocomplete_members/' . $afdeling['id'] . '/' . $event['id'],
+          '#autocomplete_path' => 'aanmelden/voorzittersdebat/autocomplete_members/' . $afdeling['id'] . '/' . $event['id'],
         );
         // create add participant button.
         $form[$afdeling['id']]['add_button_' . $afdeling['id']] = array(
@@ -58,9 +61,19 @@ function sp_debat_subscription_form($form, &$form_state) {
         '#type' => 'markup',
         '#markup' => '',
       );
+      $adaptive_text = array(
+        0 => 'Het maximale aantal aanmeldingen is bereikt.',
+        1 => 'Er kan nog één lid worden aangemeld.',
+      );
+      if (isset($adaptive_text[$allowed])) {
+        $text = $adaptive_text[$allowed];
+      }
+      else {
+        $text = 'Er kunnen nog ' . $allowed . ' leden worden aangemeld.';
+      }
       $form[$afdeling['id']]['allowed_' . $afdeling['id']] = array(
         '#type' => 'markup',
-        '#markup' => '<p>Beschikbare plekken: ' . $allowed . '</p>',
+        '#markup' => '<p>' . $text . '</p>',
       );
       // Create delete buttons for all participants.
       foreach ($participants as $participant) {
@@ -76,12 +89,28 @@ function sp_debat_subscription_form($form, &$form_state) {
               'callback' => 'sp_debat_participants_form_callback',
               'wrapper' => 'debat_form',
             ),
+            '#attributes' => array('class' => array('sp_debat_del_button')),
           );
         }
       }
     }
+    $form['sp_debat_ready_button'] = array(
+      '#type' => 'submit',
+      '#value' => 'Klaar',
+      '#name' => 'sp_debat_ready_button',
+      '#ajax' => array(
+        'callback' => 'sp_debat_participants_form_callback',
+        'wrapper' => 'debat_form',
+      ),
+      '#attributes' => array('class' => array('sp-debat-ready-submit-button')),
+    );
   }
   return $form;
+}
+
+function sp_debat_ready_button_submit($form, &$form_state) {
+  drupal_set_message('Uw aanmeldingen zijn opgeslagen.', 'error');
+  drupal_goto('<front>');
 }
 
 function sp_debat_autocomplete_members($afdeling_id, $event_id, $string) {
@@ -136,12 +165,26 @@ function sp_debat_participants_form_callback($form, &$form_state) {
       // Remove event subscription.
       sp_debat_remove_participant($participant_id, $event_id);
       break;
+    case 'del':
+      $participant_id = $matches[2];
+      // Remove event subscription.
+      sp_debat_remove_participant($participant_id, $event_id);
+      break;
     }
+    // Rebuild form.
+    $form = drupal_rebuild_form('sp_debat_subscription_form', $form_state);
+    // Show drupal messages in form.
+    $form[$afdeling_id]['message_' . $afdeling_id]['#markup'] = theme_status_messages();
   }
 
-  // Rebuild form.
-  $form = drupal_rebuild_form('sp_debat_subscription_form', $form_state);
-  // Show drupal messages in form.
-  $form[$afdeling_id]['message_' . $afdeling_id]['#markup'] = theme_status_messages();
+  if ($trigger === 'sp_debat_ready_button') {
+    drupal_set_message('Uw aanmeldingen zijn opgeslagen.');
+    ctools_include('ajax');
+    ctools_add_js('ajax-responder');
+    $commands[] = ctools_ajax_command_redirect('<front>');
+    print ajax_render($commands);
+    exit;
+  }
+
   return $form;
 }

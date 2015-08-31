@@ -1,0 +1,33 @@
+
+.sp_debat_del_button {
+  background-color: #fff;
+  margin-right: 0.4em;
+  padding: 0.4em 0.72em;
+  color: #f60000;
+  border-color: #f60000;
+  font-size: .7em;
+}
+
+.sp_debat_del_button:hover {
+  background-color: #f60000;
+  color: #fff;
+  border-color: #f60000;
+}
+
+.messages {
+  margin-top: 1em;
+  font-size: 1.14em;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+  border: 1px solid #f60000;
+}
+
+.sp-debat-ready-submit-button {
+  padding: 0.8em 1.4em;
+  font-size: 1.4em;
+}
+
+.primary-content .content .sp-debat-form h1,
+.primary-content .content .sp-debat-form h2 { 
+  padding-left: 0px;
+}

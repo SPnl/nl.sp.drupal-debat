@@ -6,14 +6,14 @@ function sp_debat_permission() {
 
 function sp_debat_menu() {
   $items = array();
-  $items['form/aanmelden-debat'] = array(
-    'title' => 'Inschrijven debat',
+  $items['aanmelden/voorzittersdebat'] = array(
+    'title' => 'Aanmelden aanwezigen voorzittersdebat',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('sp_debat_subscription_form'),
     'access arguments' => array('subscribe debates'),
     'file' => 'sp_debat.subscription_form.inc',
   );
-  $items['form/aanmelden-debat/autocomplete_members/%'] = array(
+  $items['aanmelden/voorzittersdebat/autocomplete_members/%'] = array(
     'page callback' => 'sp_debat_autocomplete_members',
     'page arguments' => array(3),
     'access arguments' => array('subscribe debates'),
@@ -21,19 +21,13 @@ function sp_debat_menu() {
     'file' => 'sp_debat.subscription_form.inc',
   );
   $items['admin/config/sp/debat'] = [
-    'title' => 'Debat aanmeldformulier',
+    'title' => 'Voorzittersdebat aanmeldformulier',
     'description' => 'Debat aanmeldformulier instellen.',
     'type' => MENU_NORMAL_ITEM,
     'page callback' => 'drupal_get_form',
     'page arguments' => array('sp_debat_admin_form'), 
     'access arguments' => array('access administration pages'),
     'file' => 'sp_debat.admin.inc',
-    ];
-
-  $items['admin/config/sp/aanmelden/submissions'] = [
-    'title'            => 'Inschrijvingen',
-    'type'             => MENU_DEFAULT_LOCAL_TASK,
-    'access arguments' => array('access administration pages'),
     ];
 
   return $items;
@@ -156,6 +150,23 @@ function sp_debat_get_province($afdeling_id) {
 }
 
 function sp_debat_get_event($province_id) {
+  $province_event_mapping = sp_debat_get_province_event_mapping();
+  $event_id = $province_event_mapping[$province_id];
+
+  // Get event data.
+  civicrm_initialize();
+  require_once 'api/api.php';
+  $params = array(
+    'version' => 3,
+    'sequential' => 1,
+    'id' => $event_id,
+  );
+  $result = civicrm_api('Event', 'getsingle', $params);
+  if (!isset($result['id'])) return FALSE;
+  return $result;
+}
+
+function sp_debat_get_province_event_mapping() {
   // Mapping: province id => event id.
   $event_noord = variable_get('sp_debat_event_noord');
   $event_midden = variable_get('sp_debat_event_midden');
@@ -173,23 +184,11 @@ function sp_debat_get_event($province_id) {
       $province_event_mapping[$province] = $$varname;
     }
   }
-  $event_id = $province_event_mapping[$province_id];
-
-  // Get event data.
-  civicrm_initialize();
-  require_once 'api/api.php';
-  $params = array(
-    'version' => 3,
-    'sequential' => 1,
-    'id' => $event_id,
-  );
-  $result = civicrm_api('Event', 'getsingle', $params);
-  if (!isset($result['id'])) return FALSE;
-  return $result;
+  return $province_event_mapping;
 }
 
-function sp_debat_get_allowed_participants($afdeling_id) {
-  // Mapping: province id => event id.
+function sp_debat_get_event_ratio_mapping() {
+  // Mapping: event id => ratio.
   $event_noord = variable_get('sp_debat_event_noord');
   $event_midden = variable_get('sp_debat_event_midden');
   $event_zuid = variable_get('sp_debat_event_zuid');
@@ -201,6 +200,10 @@ function sp_debat_get_allowed_participants($afdeling_id) {
     $event_midden => $ratio_midden, // verdeelsleutel Midden
     $event_zuid => $ratio_zuid, // verdeelsleutel Zuid
   );
+  return $mapping;
+}
+function sp_debat_get_allowed_participants($afdeling_id) {
+  $mapping = sp_debat_get_event_ratio_mapping();
   $province = sp_debat_get_province($afdeling_id);
   $event = sp_debat_get_event($province['id']);
   $members = sp_debat_get_afdeling_members($afdeling_id);
@@ -236,7 +239,7 @@ function sp_debat_get_afdeling_members_helper($afdeling_id) {
   civicrm_initialize();
   require_once 'api/api.php';
   $afdelingmembers = array();
-  $result = db_query("SELECT c.id, c.display_name FROM {civicrm_contact} c INNER JOIN {civicrm_value_geostelsel} g ON c.id = g.entity_id INNER JOIN {civicrm_membership} m ON c.id = m.contact_id WHERE (m.membership_type_id = 1 OR m.membership_type_id = 2) AND g.afdeling = :afdeling AND c.contact_type = 'Individual' AND m.status_id = 2", array(':afdeling' => $afdeling_id));
+  $result = db_query("SELECT c.id, c.display_name FROM {civicrm_contact} c INNER JOIN {civicrm_value_geostelsel} g ON c.id = g.entity_id INNER JOIN {civicrm_membership} m ON c.id = m.contact_id WHERE (m.membership_type_id = 1 OR m.membership_type_id = 2) AND g.afdeling = :afdeling AND c.contact_type = 'Individual' AND (m.status_id = 1 OR m.status_id = 2)", array(':afdeling' => $afdeling_id));
   if ($result) {
     while ($row = $result->fetchAssoc()) {
       $members[$row['id']] = $row['display_name'];
@@ -337,4 +340,31 @@ function sp_debat_get_events() {
     }
   }
   return $events;
+}
+
+function sp_debat_get_total_participants($event_id) {
+  $province_event_mapping = sp_debat_get_province_event_mapping();
+  $event_ratio_mapping = sp_debat_get_event_ratio_mapping();
+  $ratio = $event_ratio_mapping[$event_id];
+  // Create event to province mapping.
+  foreach ($province_event_mapping as $p_id => $e_id) {
+    $event_province_mapping[$e_id][$p_id] = $p_id;
+  } 
+  foreach ($event_province_mapping[$event_id] as $province_id) {
+    // Get afdelingen in province.
+    $query = "SELECT a_r.contact_id_a afdeling_id FROM {civicrm_relationship} r_p INNER JOIN {civicrm_relationship} a_r ON r_p.contact_id_a = a_r.contact_id_b INNER JOIN {civicrm_contact} con ON a_r.contact_id_a = con.id WHERE r_p.is_active = 1 AND a_r.is_active = 1 AND r_p.relationship_type_id = 95 AND a_r.relationship_type_id = 93 AND r_p.contact_id_b = :province_id";
+    civicrm_initialize();
+    require_once 'api/api.php';
+    $result = db_query($query, array(':province_id' => $province_id));
+    if ($result) {
+      // Get max per afdeling.
+      while ($row = $result->fetchAssoc()) {
+        $members = sp_debat_get_afdeling_members($row['afdeling_id']);
+        $allowed = round(count($members) / $ratio);
+        if ($allowed <2) $allowed = 2;
+        $total += $allowed;
+      }
+    }
+  }
+  return $total;
 }
