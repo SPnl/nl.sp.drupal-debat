@@ -16,7 +16,7 @@ function sp_debat_subscription_form($form, &$form_state) {
 
   // Intro texts.
   $intro[$event_noord] = '<p>Dinsdag 6 oktober<br/>Groninger Forum, Hereplein 73 te Groningen</p>';
-  $intro[$event_midden] = '<p>Maandag 28 september<br/>De Moed, Snoeckaertlaan 70 te Amersfoort</p>';
+  $intro[$event_midden] = '<p>Maandag 28 september<br/>De Moed, Snouckaertlaan 70 te Amersfoort</p>';
   $intro[$event_zuid] = '<p>Dinsdag 22 september<br/>Verkadefabriek, Boschdijkstraat 45 te \'s Hertogenbosch</p>';
 
   // Create ajax form.
