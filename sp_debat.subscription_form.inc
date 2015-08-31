@@ -127,7 +127,7 @@ function sp_debat_autocomplete_members($afdeling_id, $event_id, $string) {
         break;
       }
       if (strpos(strtolower($member_name), strtolower($string)) !== FALSE) {
-          $selected_members[$member_id] = $member_name;
+        $selected_members[$member_id] = $member_name . ' - ' . $member_id;
       }
     }
     drupal_json_output($selected_members);
