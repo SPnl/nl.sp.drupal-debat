@@ -10,7 +10,6 @@ function sp_debat_admin_form($form, &$form_state) {
   );
   foreach ($regions as $key => $name) {
     $default_event_id = variable_get('sp_debat_event_' . $key);
-    $total = sp_debat_get_total_participants($default_event_id);
 
     $form[$key] = array(
       '#type' => 'fieldset',
@@ -20,7 +19,7 @@ function sp_debat_admin_form($form, &$form_state) {
       '#type' => 'select',
       '#title' => 'Selecteer een debat',
       '#options' => $events,
-      '#default_value' => $default_event_id,
+      '#default_value' => isset($default_event_id) ? $default_event_id : '',
       '#required' => TRUE,
     );
     $form[$key]['sp_debat_ratio_' . $key] = array(
@@ -30,7 +29,10 @@ function sp_debat_admin_form($form, &$form_state) {
       '#default_value' => variable_get('sp_debat_ratio_' . $key),
       '#required' => TRUE,
     );
-    $form[$key]['sp_debat_ratio_' . $key]['#suffix'] = 'Totaal aantal beschikbare plaatsen: ' . $total;
+    if (isset($default_event_id)) {
+      $total = sp_debat_get_total_participants($default_event_id);
+      $form[$key]['sp_debat_ratio_' . $key]['#suffix'] = 'Totaal aantal beschikbare plaatsen: ' . $total;
+    }
   }
   return system_settings_form($form);
 }
