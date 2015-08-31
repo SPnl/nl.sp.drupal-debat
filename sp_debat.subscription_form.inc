@@ -44,7 +44,7 @@ function sp_debat_subscription_form($form, &$form_state) {
       );
       $form[$afdeling['id']]['intro_' . $afdeling['id']] = array(
         '#type' => 'markup',
-        '#markup' => '<h1>' . $afdeling['display_name'] . '</h1><h2>' . $event['title'] . '</h2>' . $intro[$event['id']],
+        '#markup' => '<h1>' . $afdeling['display_name'] . '</h1><p><strong>' . $event['title'] . '</strong></p>' . $intro[$event['id']],
       );
       if ($allowed > 0) {
         // Create select participant button.
