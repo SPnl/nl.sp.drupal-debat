@@ -256,7 +256,9 @@ function sp_debat_contact_member_afdeling($contact_id, $afdeling_id) {
   return FALSE;
 }
 
-function sp_debat_get_participants($event_id) {
+function sp_debat_get_participants($event_id, $afdeling_id) {
+  $participants = array();
+  $members = sp_debat_get_afdeling_members($afdeling_id);
   civicrm_initialize();
   require_once 'api/api.php';
   $params = array(
@@ -266,7 +268,12 @@ function sp_debat_get_participants($event_id) {
   );
   $result = civicrm_api('Participant', 'get', $params);
   if (empty($result['values'])) return array();
-  return $result['values'];
+  foreach ($result['values'] as $id => $participant) {
+    if (isset($members[$participant['contact_id']])) {
+      $participants[$id] = $participant;
+    }
+  }
+  return $participants;
 }
 
 function sp_debat_get_participant($participant_id) {

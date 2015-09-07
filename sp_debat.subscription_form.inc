@@ -33,7 +33,7 @@ function sp_debat_subscription_form($form, &$form_state) {
       $province = sp_debat_get_province($afdeling['id']);
       $event = sp_debat_get_event($province['id']);
       $members = sp_debat_get_afdeling_members($afdeling['id']);
-      $participants = sp_debat_get_participants($event['id']);
+      $participants = sp_debat_get_participants($event['id'], $afdeling['id']);
       $allowed = sp_debat_get_allowed_participants($afdeling['id']) - count($participants);
 
       // Store mapping afdeling id -> event id.
@@ -85,21 +85,18 @@ function sp_debat_subscription_form($form, &$form_state) {
       );
       // Create delete buttons for all participants.
       foreach ($participants as $participant) {
-        // filter on afdeling.
-        if (isset($members[$participant['contact_id']])) {
-          $form[$afdeling['id']]['del_button_' . $participant['id']] = array(
-            '#type' => 'button',
-            '#value' => 'x',
-            '#name' => 'del_button_' . $participant['id'],
-            '#prefix' => '<p>',
-            '#suffix' =>  $participant['display_name'] . '</p> ',
-            '#ajax' => array(
-              'callback' => 'sp_debat_participants_form_callback',
-              'wrapper' => 'debat_form',
-            ),
-            '#attributes' => array('class' => array('sp_debat_del_button')),
-          );
-        }
+        $form[$afdeling['id']]['del_button_' . $participant['id']] = array(
+          '#type' => 'button',
+          '#value' => 'x',
+          '#name' => 'del_button_' . $participant['id'],
+          '#prefix' => '<p>',
+          '#suffix' =>  $participant['display_name'] . '</p> ',
+          '#ajax' => array(
+            'callback' => 'sp_debat_participants_form_callback',
+            'wrapper' => 'debat_form',
+          ),
+          '#attributes' => array('class' => array('sp_debat_del_button')),
+        );
       }
     }
     $form['sp_debat_ready_button'] = array(
