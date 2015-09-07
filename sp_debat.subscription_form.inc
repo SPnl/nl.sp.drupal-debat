@@ -30,11 +30,10 @@ function sp_debat_subscription_form($form, &$form_state) {
   if ($afdelingen) {
     foreach($afdelingen as $afdeling) {
       // Set data.
-      $province = sp_debat_get_province($afdeling['id']);
-      $event = sp_debat_get_event($province['id']);
+      $event = sp_debat_get_event($afdeling['id']);
       $members = sp_debat_get_afdeling_members($afdeling['id']);
       $participants = sp_debat_get_participants($event['id'], $afdeling['id']);
-      $allowed = sp_debat_get_allowed_participants($afdeling['id']) - count($participants);
+      $allowed = sp_debat_get_allowed_participants($afdeling['id']);
 
       // Store mapping afdeling id -> event id.
       $form_state['event']['afd_event'][$afdeling['id']] = $event['id'];
@@ -69,12 +68,14 @@ function sp_debat_subscription_form($form, &$form_state) {
         '#type' => 'markup',
         '#markup' => '',
       );
-      $adaptive_text = array(
-        0 => 'Het maximale aantal aanmeldingen is bereikt.',
-        1 => 'Er kan nog één lid worden aangemeld.',
-      );
-      if (isset($adaptive_text[$allowed])) {
-        $text = $adaptive_text[$allowed];
+      if ($allowed < 0) {
+        $text = 'Het maximale aantal aanmeldingen is overschreden.';
+      }
+      elseif ($allowed == 0) {
+        $text = 'Het maximale aantal aanmeldingen is bereikt.';
+      }
+      elseif ($allowed == 1) {
+        $text = 'Er kan nog één lid worden aangemeld.';
       }
       else {
         $text = 'Er kunnen nog ' . $allowed . ' leden worden aangemeld.';

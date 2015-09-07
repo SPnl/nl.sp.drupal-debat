@@ -149,7 +149,9 @@ function sp_debat_get_province($afdeling_id) {
   return $result;
 }
 
-function sp_debat_get_event($province_id) {
+function sp_debat_get_event($afdeling_id) {
+  $province = sp_debat_get_province($afdeling_id);
+  $province_id = $province['id'];
   $province_event_mapping = sp_debat_get_province_event_mapping();
   $event_id = $province_event_mapping[$province_id];
 
@@ -164,6 +166,18 @@ function sp_debat_get_event($province_id) {
   $result = civicrm_api('Event', 'getsingle', $params);
   if (!isset($result['id'])) return FALSE;
   return $result;
+}
+
+function sp_debat_get_landsdeel($event_id) {
+  $event_noord = variable_get('sp_debat_event_noord');
+  $event_midden = variable_get('sp_debat_event_midden');
+  $event_zuid = variable_get('sp_debat_event_zuid');
+  $mapping = array(
+    $event_noord => 'noord',
+    $event_midden => 'midden',
+    $event_zuid => 'zuid',
+  );
+  return $mapping[$event_id];
 }
 
 function sp_debat_get_province_event_mapping() {
@@ -202,13 +216,22 @@ function sp_debat_get_event_ratio_mapping() {
   );
   return $mapping;
 }
+
 function sp_debat_get_allowed_participants($afdeling_id) {
-  $mapping = sp_debat_get_event_ratio_mapping();
-  $province = sp_debat_get_province($afdeling_id);
-  $event = sp_debat_get_event($province['id']);
+  $event = sp_debat_get_event($afdeling_id);
+  $landsdeel = sp_debat_get_landsdeel($event['id']);
+  $free = variable_get('sp_debat_free_' . $landsdeel);
+  if ($free) {
+    $all_participants = sp_debat_get_all_participants($event['id']);
+    $total_participants = sp_debat_get_total_participants($event['id']);
+    return ($total_participants - count($all_participants));
+  }
   $members = sp_debat_get_afdeling_members($afdeling_id);
-  $allowed = round(count($members) / $mapping[$event['id']]);
-  if ($allowed <2) $allowed = 2;
+  $participants = sp_debat_get_participants($event['id'], $afdeling_id);
+  $mapping = sp_debat_get_event_ratio_mapping();
+  $max = round(count($members) / $mapping[$event['id']]);
+  if ($max < 2) $max = 2;
+  $allowed = $max - count($participants);
   return $allowed;
 }
 
@@ -256,7 +279,7 @@ function sp_debat_contact_member_afdeling($contact_id, $afdeling_id) {
   return FALSE;
 }
 
-function sp_debat_get_participants($event_id, $afdeling_id) {
+function sp_debat_get_all_participants($event_id) {
   $participants = array();
   $members = sp_debat_get_afdeling_members($afdeling_id);
   civicrm_initialize();
@@ -268,7 +291,15 @@ function sp_debat_get_participants($event_id, $afdeling_id) {
   );
   $result = civicrm_api('Participant', 'get', $params);
   if (empty($result['values'])) return array();
-  foreach ($result['values'] as $id => $participant) {
+  return $result['values'];
+}
+
+function sp_debat_get_participants($event_id, $afdeling_id) {
+  $participants = array();
+  $all_participants = sp_debat_get_all_participants($event_id);
+  $members = sp_debat_get_afdeling_members($afdeling_id);
+  if (empty($all_participants)) return array();
+  foreach ($all_participants as $id => $participant) {
     if (isset($members[$participant['contact_id']])) {
       $participants[$id] = $participant;
     }

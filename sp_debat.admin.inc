@@ -29,6 +29,11 @@ function sp_debat_admin_form($form, &$form_state) {
       '#default_value' => variable_get('sp_debat_ratio_' . $key),
       '#required' => TRUE,
     );
+    $form[$key]['sp_debat_free_' . $key] = array(
+      '#type' => 'checkbox',
+      '#title' => 'Aanmeldingen vrijgeven',
+      '#default_value' => variable_get('sp_debat_free_' . $key),
+    );
     if (isset($default_event_id)) {
       $total = sp_debat_get_total_participants($default_event_id);
       $form[$key]['sp_debat_ratio_' . $key]['#suffix'] = 'Totaal aantal beschikbare plaatsen: ' . $total;
