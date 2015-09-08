@@ -217,22 +217,39 @@ function sp_debat_get_event_ratio_mapping() {
   return $mapping;
 }
 
-function sp_debat_get_allowed_participants($afdeling_id) {
+function sp_debat_get_free($afdeling_id) {
   $event = sp_debat_get_event($afdeling_id);
   $landsdeel = sp_debat_get_landsdeel($event['id']);
-  $free = variable_get('sp_debat_free_' . $landsdeel);
-  if ($free) {
+  $free = variable_get('sp_debat_free_' . $landsdeel, 0);
+  return $free;
+}
+
+function sp_debat_get_allowed_participants($afdeling_id) {
+  $event = sp_debat_get_event($afdeling_id);
+  $free = sp_debat_get_free($afdeling_id); 
+  switch ($free) {
+  case 0:
+    $members = sp_debat_get_afdeling_members($afdeling_id);
+    $participants = sp_debat_get_participants($event['id'], $afdeling_id);
+    $mapping = sp_debat_get_event_ratio_mapping();
+    $max = round(count($members) / $mapping[$event['id']]);
+    if ($max < 2) $max = 2;
+    $allowed = $max - count($participants);
+    return $allowed;
+    break;
+  case 1:
     $all_participants = sp_debat_get_all_participants($event['id']);
     $total_participants = sp_debat_get_total_participants($event['id']);
     return ($total_participants - count($all_participants));
+    break;
+  case 2:
+    $members = sp_debat_get_afdeling_members($afdeling_id);
+    $participants = sp_debat_get_participants($event['id'], $afdeling_id);
+    $mapping = sp_debat_get_event_ratio_mapping();
+    $max = round(count($members) / $mapping[$event['id']]);
+    return $max;
+    break;
   }
-  $members = sp_debat_get_afdeling_members($afdeling_id);
-  $participants = sp_debat_get_participants($event['id'], $afdeling_id);
-  $mapping = sp_debat_get_event_ratio_mapping();
-  $max = round(count($members) / $mapping[$event['id']]);
-  if ($max < 2) $max = 2;
-  $allowed = $max - count($participants);
-  return $allowed;
 }
 
 function sp_debat_get_afdeling_members($afdeling_id) {
@@ -294,9 +311,12 @@ function sp_debat_get_all_participants($event_id) {
   return $result['values'];
 }
 
-function sp_debat_get_participants($event_id, $afdeling_id) {
-  $participants = array();
+function sp_debat_get_participants($event_id, $afdeling_id = NULL) {
   $all_participants = sp_debat_get_all_participants($event_id);
+  if (empty($afdeling_id)) {
+    return $all_participants;
+  }
+  $participants = array();
   $members = sp_debat_get_afdeling_members($afdeling_id);
   if (empty($all_participants)) return array();
   foreach ($all_participants as $id => $participant) {

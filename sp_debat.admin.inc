@@ -29,13 +29,19 @@ function sp_debat_admin_form($form, &$form_state) {
       '#default_value' => variable_get('sp_debat_ratio_' . $key),
       '#required' => TRUE,
     );
+    $total = sp_debat_get_total_participants($default_event_id);
+    $options = array(
+      'Aanmeldingen beperken tot maximum per afdeling.',
+      'Aanmeldingen per afdeling vrijgeven tot evenement maximum bereikt is.',
+      'Aanmeldingen niet beperken, meer aanmeldingen mogelijk dan plaatsen.',
+    );
     $form[$key]['sp_debat_free_' . $key] = array(
-      '#type' => 'checkbox',
+      '#type' => 'radios',
       '#title' => 'Aanmeldingen vrijgeven',
-      '#default_value' => variable_get('sp_debat_free_' . $key),
+      '#default_value' => variable_get('sp_debat_free_' . $key, 0),
+      '#options' => $options,
     );
     if (isset($default_event_id)) {
-      $total = sp_debat_get_total_participants($default_event_id);
       $form[$key]['sp_debat_ratio_' . $key]['#suffix'] = 'Totaal aantal beschikbare plaatsen: ' . $total;
     }
   }

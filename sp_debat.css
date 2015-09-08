@@ -14,6 +14,11 @@
   border-color: #f60000;
 }
 
+.sp_debat_del_button.not-guaranteed {
+  background-color: #fff;
+  color: #f60000;
+}
+
 .messages {
   margin-top: 1em;
   font-size: 1.14em;
