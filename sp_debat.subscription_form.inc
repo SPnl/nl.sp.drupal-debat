@@ -133,26 +133,8 @@ function sp_debat_ready_button_submit($form, &$form_state) {
 }
 
 function sp_debat_autocomplete_members($afdeling_id, $event_id, $string) {
-  if (strlen($string) > 2) {
-    // Check if participant is already subscribed.
-    $participants = sp_debat_get_participants($event_id, $afdeling_id);
-    $members = sp_debat_get_afdeling_members($afdeling_id);
-    // Remove participants from memberlist.
-    foreach ($participants as $participant) {
-      if (isset($members[$participant['contact_id']])) {
-        unset($members[$participant['contact_id']]);
-      }
-    }
-    foreach ($members as $member_id => $member_name) {
-      if (count($selected_members) > 9) {
-        break;
-      }
-      if (strpos(strtolower($member_name), strtolower($string)) !== FALSE) {
-        $selected_members[$member_id] = $member_name . ' - ' . $member_id;
-      }
-    }
-    drupal_json_output($selected_members);
-  }
+  $selected_members = sp_debat_find_members($afdeling_id, $event_id, $string); 
+  drupal_json_output($selected_members);
   exit;
 }
 
@@ -170,6 +152,13 @@ function sp_debat_participants_form_callback($form, &$form_state) {
     switch ($matches[1]) {
     case 'add':
       $contact_id = $values['participant_' . $afdeling_id];
+      // Check if is lidnummer.
+      if(!filter_var($contact_id, FILTER_VALIDATE_INT)) {
+        $selected_members = sp_debat_find_members($afdeling_id, $event_id, $contact_id); 
+        if (count($selected_members) == 1) {
+          $contact_id = key($selected_members);
+        }
+      }
       // Check if member afdeling.
       if (sp_debat_contact_member_afdeling($contact_id, $afdeling_id)) {
         // Create event subscription.
