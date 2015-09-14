@@ -306,6 +306,7 @@ function sp_debat_get_all_participants($event_id) {
     'version' => 3,
     'sequential' => 1,
     'event_id' => $event_id,
+		'option.limit'  => 1000,
   );
   $result = civicrm_api('Participant', 'get', $params);
   if (empty($result['values'])) return array();
