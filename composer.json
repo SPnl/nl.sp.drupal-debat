@@ -1,7 +1,6 @@
 {
   "name": "SPnl/nl.sp.drupal-debat",
   "description": "Inschrijvingspagina voor SP debatten",
-  "version": "1.0.0",
   "type": "drupal-module",
   "authors": [
     {
