@@ -1,7 +1,7 @@
 {
-  "name": "SPnl/nl.sp.drupal-debat",
+  "name": "spnl/nl.sp.drupal-debat",
   "description": "Inschrijvingspagina voor SP debatten",
-  "type": "drupal-module",
+  "type": "drupal-custom-module",
   "authors": [
     {
       "name": "Thomas de Graaff",
